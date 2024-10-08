@@ -1,26 +1,37 @@
 var pluginStatusInTab = {}; // 插件在标签页中的状态
-/*
-* 点击插件图标时
-*/
-chrome.browserAction.onClicked.addListener(function(tab) {
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    var currentTabId = tabs[0].id;
-    // alert('当前标签页id：' + currentTabId);
-    if(!(currentTabId in pluginStatusInTab) || !pluginStatusInTab[currentTabId]){
-      pluginStatusInTab[currentTabId] = true;
-      // 调用 injectScript 中的函数
-      chrome.tabs.executeScript(tab.id, {code:'init()'});
-    }else{
-      pluginStatusInTab[currentTabId] = false;
-      chrome.tabs.executeScript(tab.id, {code:'destroy()'});
-    }
-  });
+
+// 点击插件图标时
+chrome.action.onClicked.addListener(function(tab) {
+  var currentTabId = tab.id;
+
+  if (!(currentTabId in pluginStatusInTab) || !pluginStatusInTab[currentTabId]) {
+    pluginStatusInTab[currentTabId] = true;
+
+    // 注入脚本并执行 init 方法
+    chrome.scripting.executeScript({
+      target: { tabId: currentTabId },
+      files: ['injectScript.js'] // 首先注入脚本文件
+    }, function() {
+      chrome.scripting.executeScript({
+        target: { tabId: currentTabId },
+        func: () => init() // 然后执行注入脚本中的 init 方法
+      });
+    });
+
+  } else {
+    pluginStatusInTab[currentTabId] = false;
+
+    // 执行 destroy 方法
+    chrome.scripting.executeScript({
+      target: { tabId: currentTabId },
+      func: () => destroy() // 直接调用 injectScript.js 中的 destroy 方法
+    });
+  }
 });
 
-// 页面更新事件（有很多情况都会触发，如页面刷新，输入框内容改变）
-chrome.tabs.onUpdated.addListener(function (tabId, updateInfo) {
-  // alert('页面刷新了！' + tabId + '，状态变更为：' + updateInfo.status);
-  if(tabId in pluginStatusInTab){
+// 页面更新事件（例如页面刷新，输入框内容改变等）
+chrome.tabs.onUpdated.addListener(function(tabId, updateInfo) {
+  if (tabId in pluginStatusInTab) {
     pluginStatusInTab[tabId] = false;
   }
 });

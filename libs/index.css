@@ -56,7 +56,7 @@
 .easy-selector-message.enter{
     transform: translateX(-50%) translateY(-100%);
 }
-
+/* 点击元素出现的提示框 */
 .easy-selector-popper .tippy-box{
     line-height: 1.5;
     letter-spacing: 1px;

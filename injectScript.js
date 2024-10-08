@@ -2,50 +2,62 @@ var isActive = false;
 var activeEl = null; // 当前选择的元素
 var removeEventsFn;
 
-
-function init(){
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    init();
+    console.log("初始化成功");
+  } catch (error) {
+    console.error("初始化错误", error);
+  }
+});
+function init() {
   // 防止重复初始化
-  if(document.getElementById('easy_selector_toolbar')){
+  if (document.getElementById("easy_selector_toolbar")) {
     return;
   }
   injectHtml(); // 向页面注入html代码
   removeEventsFn = documentBindEvents(); // 给根元素绑定事件
 
-  var maskEl = document.getElementById('easy_selector_mask');
+  var maskEl = document.getElementById("easy_selector_mask");
+  maskEl.style.border = "2px dashed #f00";
   // 给指示器按钮绑定点击事件
-  document.getElementById('get_ele_selector_btn').addEventListener('click', function () {
-    console.log('触发了click事件');
-    if(!isActive){
-      isActive = true;
-      maskEl.style.display = 'block';
-      maskEl.style.pointerEvents = 'none';
-      this.classList.add('is-use');
-    }else{
-      isActive = false;
-      maskEl.style.display = 'none';
-      maskEl.style.pointerEvents = 'auto';
-      maskEl.style.top = '-100%';
-      maskEl.style.left = '-100%';
-      this.classList.remove('is-use');
-    }
-  }, false);
+  document.getElementById("get_ele_selector_btn").addEventListener(
+    "click",
+    function () {
+      console.log("触发了click事件");
+      if (!isActive) {
+        isActive = true;
+        maskEl.style.display = "block";
+        maskEl.style.pointerEvents = "none";
+        this.classList.add("is-use");
+      } else {
+        isActive = false;
+        maskEl.style.display = "none";
+        maskEl.style.pointerEvents = "auto";
+        maskEl.style.top = "-100%";
+        maskEl.style.left = "-100%";
+        this.classList.remove("is-use");
+      }
+    },
+    false
+  );
 }
 
 /**
  * 给document绑定事件
  * @returns {(function(): void)|*}
  */
-function documentBindEvents(){
-  var maskEl = document.getElementById('easy_selector_mask');
-  var toolbarEl = document.getElementById('easy_selector_toolbar');
-  var getEleSelectorBtn = toolbarEl.querySelector('.get-ele-selector');
+function documentBindEvents() {
+  var maskEl = document.getElementById("easy_selector_mask");
+  var toolbarEl = document.getElementById("easy_selector_toolbar");
+  var getEleSelectorBtn = toolbarEl.querySelector(".get-ele-selector");
   var isMouseDown = false;
   var mouseDownTime = 0;
   var elLeftWithMouseX = 0; // 鼠标x坐标点距离元素左边的距离
   var elTopWithMouseY = 0;
 
   var mouseDownFn = function (e) {
-    if(elementContains(toolbarEl, e.target) && !isActive){
+    if (elementContains(toolbarEl, e.target) && !isActive) {
       var elRect = toolbarEl.getBoundingClientRect();
       elLeftWithMouseX = e.pageX - elRect.left;
       elTopWithMouseY = e.pageY - elRect.top;
@@ -53,157 +65,164 @@ function documentBindEvents(){
       mouseDownTime = new Date().getTime();
       return;
     }
-    if(!isActive){
-      return;;
+    if (!isActive) {
+      return;
     }
 
     // 设置高亮选中节点的元素的pointerEvents为auto，以达到禁用选中节点的点击事件效果
-    maskEl.style.pointerEvents = 'auto';
+    maskEl.style.pointerEvents = "auto";
     isActive = false;
-    console.log('activeEl', activeEl);
+    console.log("activeEl", activeEl);
 
     var selector = finder(activeEl, {
       // root: document.documentElement,
       className: (name) => {
-        return !name.startsWith('is-');
+        return !name.startsWith("is-");
       },
       tagName: (name) => true,
       seedMinLength: 10,
-      optimizedMinLength: 15
+      optimizedMinLength: 15,
     });
     showPopper(activeEl, selector);
 
     var timer = setTimeout(function () {
       clearTimeout(timer);
-      maskEl.style.display = 'none';
-      maskEl.style.pointerEvents = 'none';
-      maskEl.style.top = '-100%';
-      maskEl.style.left = '-100%';
-      getEleSelectorBtn.classList.remove('is-use');
+      maskEl.style.display = "none";
+      maskEl.style.pointerEvents = "none";
+      maskEl.style.top = "-100%";
+      maskEl.style.left = "-100%";
+      getEleSelectorBtn.classList.remove("is-use");
     }, 220);
   };
   var mouseMoveFn = function (e) {
     var target = (e || window.event).target;
     // 移动工具栏
-    if(!isActive && isMouseDown){
-      console.log('移动工具栏', isActive, isMouseDown);
+    if (!isActive && isMouseDown) {
+      console.log("移动工具栏", isActive, isMouseDown);
       moveToolBar(e);
       return;
     }
 
-    if(!isActive || target === activeEl || elementContains(toolbarEl, target)){
+    if (
+      !isActive ||
+      target === activeEl ||
+      elementContains(toolbarEl, target)
+    ) {
       return;
     }
     console.log(111, isActive, isMouseDown);
     var targetRect = target.getBoundingClientRect();
     activeEl = target;
-    maskEl.style.width = targetRect.width + 'px';
-    maskEl.style.height = targetRect.height + 'px';
-    maskEl.style.top = targetRect.top + 'px';
-    maskEl.style.left = targetRect.left + 'px';
+    maskEl.style.width = targetRect.width + "px";
+    maskEl.style.height = targetRect.height + "px";
+    maskEl.style.top = targetRect.top + "px";
+    maskEl.style.left = targetRect.left + "px";
   };
   var mouseUpFn = function (e) {
     isMouseDown = false;
-    console.log('触发了mouseUp事件');
-    if(new Date().getTime() - mouseDownTime > 300){ // 防止按钮点击事件不可用
+    console.log("触发了mouseUp事件");
+    if (new Date().getTime() - mouseDownTime > 300) {
+      // 防止按钮点击事件不可用
       console.log(123);
 
-      if(elementContains(toolbarEl, e.target)){
-        var btns = ([]).slice.call(toolbarEl.querySelectorAll('button'));
-        getEleSelectorBtn.classList.remove('is-use');
+      if (elementContains(toolbarEl, e.target)) {
+        var btns = [].slice.call(toolbarEl.querySelectorAll("button"));
+        getEleSelectorBtn.classList.remove("is-use");
         // 将按钮都禁用掉，以免触发按钮的click事件，随后将其恢复可用
         btns.forEach(function (btn) {
-          if(!btn.hasAttribute('disabled')){
-            btn.setAttribute('temporary-disabled', 'true');
-            btn.setAttribute('disabled', 'disabled');
+          if (!btn.hasAttribute("disabled")) {
+            btn.setAttribute("temporary-disabled", "true");
+            btn.setAttribute("disabled", "disabled");
           }
         });
 
         var timer = setTimeout(function () {
           clearTimeout(timer);
           btns.forEach(function (btn) {
-            if(btn.hasAttribute('temporary-disabled')){
-              btn.removeAttribute('disabled');
-              btn.removeAttribute('temporary-disabled');
+            if (btn.hasAttribute("temporary-disabled")) {
+              btn.removeAttribute("disabled");
+              btn.removeAttribute("temporary-disabled");
               btn.disabled = false;
             }
           });
         }, 100);
       }
     }
-  }
+  };
   // 移动工具栏
   var moveToolBar = function (e) {
     var mouseX = e.pageX,
       mouseY = e.pageY;
     e.preventDefault();
-    toolbarEl.style.left = (mouseX - elLeftWithMouseX) + 'px';
-    toolbarEl.style.top = (mouseY - elTopWithMouseY) + 'px';
-  }
-
+    toolbarEl.style.left = mouseX - elLeftWithMouseX + "px";
+    toolbarEl.style.top = mouseY - elTopWithMouseY + "px";
+  };
 
   // 给根元素绑定mousemove事件
-  document.addEventListener('mousemove', mouseMoveFn, false);
+  document.addEventListener("mousemove", mouseMoveFn, false);
   // 给根节点绑定mousedown事件
-  document.addEventListener('mousedown', mouseDownFn, false);
+  document.addEventListener("mousedown", mouseDownFn, false);
   // 给根节点绑定mouseup事件
-  document.addEventListener('mouseup', mouseUpFn, false);
+  document.addEventListener("mouseup", mouseUpFn, false);
 
   // 移除事件
   return function () {
-    document.removeEventListener('mousemove', mouseMoveFn, false);
-    document.removeEventListener('mousedown', mouseDownFn, false);
-    document.removeEventListener('mouseup', mouseUpFn, false);
+    document.removeEventListener("mousemove", mouseMoveFn, false);
+    document.removeEventListener("mousedown", mouseDownFn, false);
+    document.removeEventListener("mouseup", mouseUpFn, false);
     maskEl = toolbarEl = getEleSelectorBtn = null;
-  }
+  };
 }
 
-function destroy(){
-  if(!removeEventsFn){
+function destroy() {
+  if (!removeEventsFn) {
     return;
   }
   removeEventsFn();
-  document.body.removeChild(document.getElementById('easy_selector_mask'));
-  document.body.removeChild(document.getElementById('easy_selector_toolbar'));
+  document.body.removeChild(document.getElementById("easy_selector_mask"));
+  document.body.removeChild(document.getElementById("easy_selector_toolbar"));
   isActive = false;
   activeEl = null;
   removeEventsFn = null;
 }
-
 
 /**
  * 显示气泡弹窗
  * @param targetEl 目标元素
  * @param content 内容
  */
-function showPopper(targetEl, content){
+function showPopper(targetEl, content) {
   let tipIns = tippy(targetEl, {
     content: content,
-    trigger: 'click',
-    animation: 'shift-away',
+    trigger: "click",
+    animation: "shift-away",
     arrow: true,
     interactive: true,
     allowHTML: true,
     // maxWidth: 650,
     appendTo: document.body,
-    onCreate(ins){
-      console.log('ins', ins);
+    onCreate(ins) {
+      console.log("ins", ins);
       var popperEl = ins.popper;
-      popperEl.className = popperEl.className + ' easy-selector-popper';
+      popperEl.className = popperEl.className + " easy-selector-popper";
 
-      let tippyContent = popperEl.querySelector('.tippy-content');
-      tippyContent.title = '双击可复制内容！';
-      tippyContent.addEventListener('dblclick', function (e) {
-        e.preventDefault();
-        copy(content);
-        showMessage('CSS Selector复制成功！');
-        ins.hide();
-        tippyContent = ins = tipIns = null;
-      }, false);
+      let tippyContent = popperEl.querySelector(".tippy-content");
+      tippyContent.title = "双击可复制内容！";
+      tippyContent.addEventListener(
+        "dblclick",
+        function (e) {
+          e.preventDefault();
+          copy(content);
+          showMessage("CSS Selector复制成功！");
+          ins.hide();
+          tippyContent = ins = tipIns = null;
+        },
+        false
+      );
     },
-    onHidden(ins){
+    onHidden(ins) {
       ins.destroy();
-    }
+    },
   });
   // 防止火狐浏览器第一次时气泡弹窗显示不了
   let timer = setTimeout(function () {
@@ -215,8 +234,8 @@ function showPopper(targetEl, content){
 /**
  * 向页面插入dom
  */
-function injectHtml(){
-  var html  = `
+function injectHtml() {
+  var html = `
         <div class="easy-selector-mask" id="easy_selector_mask"></div>
         <ul class="easy-selector-toolbar" id="easy_selector_toolbar">
           <li class="easy-selector-fun">
@@ -225,10 +244,10 @@ function injectHtml(){
             </button>
           </li>
         </ul>`;
-  var temp = document.createElement('div');
+  var temp = document.createElement("div");
   temp.innerHTML = html;
-  var children = ([]).slice.call(temp.children);
-  for(var i = 0, len = children.length; i < len; i++){
+  var children = [].slice.call(temp.children);
+  for (var i = 0, len = children.length; i < len; i++) {
     document.body.appendChild(children[i]);
   }
   children = temp = null;
@@ -238,15 +257,15 @@ function injectHtml(){
  * 显示消息
  * @param msg 消息
  */
-function showMessage(msg){
-  var msgEl = document.createElement('div');
-  msgEl.className = 'easy-selector-message enter';
+function showMessage(msg) {
+  var msgEl = document.createElement("div");
+  msgEl.className = "easy-selector-message enter";
   msgEl.innerHTML = msg;
   document.body.appendChild(msgEl);
-  var timer = setTimeout(function (){
+  var timer = setTimeout(function () {
     clearTimeout(timer);
-    msgEl.className = 'easy-selector-message';
-    msgEl.style.top = '10px';
+    msgEl.className = "easy-selector-message";
+    msgEl.style.top = "10px";
   }, 250);
   var timer2 = setTimeout(function () {
     clearTimeout(timer2);
@@ -259,15 +278,15 @@ function showMessage(msg){
  * 复制内容到剪切板
  * @param content 需复制的内容
  */
-function copy(content){
-  var input = document.createElement('input');
-  input.style.position = 'absolute';
-  input.style.left = '-9999px';
+function copy(content) {
+  var input = document.createElement("input");
+  input.style.position = "absolute";
+  input.style.left = "-9999px";
   input.value = content;
   document.body.appendChild(input);
   input.select();
   // 将内容复制到剪切板
-  document.execCommand('copy');
+  document.execCommand("copy");
   document.body.removeChild(input);
   input = null;
 }
@@ -277,11 +296,11 @@ function copy(content){
  * @param childEle 子元素
  * @returns {Boolean}
  */
-function elementContains (parentEl, childEle) {
+function elementContains(parentEl, childEle) {
   if (parentEl === childEle) {
     return false;
   }
-  if (typeof parentEl.contains === 'function') {
+  if (typeof parentEl.contains === "function") {
     return parentEl.contains(childEle);
   } else {
     while (true) {
@@ -296,4 +315,4 @@ function elementContains (parentEl, childEle) {
     }
     return false;
   }
-};
+}

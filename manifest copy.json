@@ -1,22 +1,20 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
+
   "name": "easy-selector",
-  "description": "一个轻巧简单好用的获取DOM元素CSS选择器的Chrome插件！",
+  "description": "一个轻巧简单好用的获取dom元素css 选择器的Chrome插件！",
   "version": "1.0",
   "background": {
-    "service_worker": "background.js"
+    "page": "background.html"
   },
   "permissions": [
+    "background",
     "tabs",
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
     "http://*/*",
     "https://*/*",
     "file://*/*"
   ],
-  "action": {
+  "browser_action": {
     "default_icon": "./icons/easy-selector_48.png",
     "default_title": "easy css selector"
   },
@@ -38,20 +36,15 @@
         "libs/tippy/tippy.css",
         "libs/index.css"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
-    {
-      "resources": [
-        "libs/finder/finder.js",
-        "libs/tippy/popper.min.js",
-        "libs/tippy/tippy.umd.min.js",
-        "injectScript.js",
-        "libs/tippy/tippy.css",
-        "libs/index.css"
-      ],
-      "matches": ["<all_urls>"]
-    }
+    "libs/finder/finder.js",
+    "libs/tippy/popper.min.js",
+    "libs/tippy/tippy.umd.min.js",
+    "injectScript.js",
+    "libs/tippy/tippy.css",
+    "libs/index.css"
   ]
 }
