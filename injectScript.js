@@ -1,25 +1,30 @@
 var isActive = false;
 var activeEl = null; // 当前选择的元素
 var removeEventsFn;
-
+var socketIo;
+var tabInfo;
 document.addEventListener("DOMContentLoaded", () => {
   try {
     init();
+
     console.log("初始化成功");
   } catch (error) {
     console.error("初始化错误", error);
   }
 });
-function init() {
+function init(tab) {
+  console.log("init初始化+++", tab);
+  tabInfo = tab;
   // 防止重复初始化
   if (document.getElementById("easy_selector_toolbar")) {
     return;
   }
+  socketInit();
   injectHtml(); // 向页面注入html代码
   removeEventsFn = documentBindEvents(); // 给根元素绑定事件
 
   var maskEl = document.getElementById("easy_selector_mask");
-  maskEl.style.border = "2px dashed #f00";
+  // maskEl.style.border = "2px dashed green";
   // 给指示器按钮绑定点击事件
   document.getElementById("get_ele_selector_btn").addEventListener(
     "click",
@@ -42,7 +47,29 @@ function init() {
     false
   );
 }
+// 初始化socketIo
+function socketInit() {
+  if (socketIo) {
+    return;
+  }
 
+  const script = document.createElement("script");
+  script.src = chrome.runtime.getURL("libs/socket/index.js");
+  script.onload = () => {
+    console.log("socketIo.io-client 加载成功");
+    socketIo = io("http://localhost:3003");
+    socketIo.on("connect", () => {
+      console.log("连接成功");
+    });
+    socketIo.on("connect-error", () => {
+      console.log("连接失败");
+    });
+  };
+  script.onerror = () => {
+    console.error("socketIo.io-client 加载失败");
+  };
+  document.head.appendChild(script);
+}
 /**
  * 给document绑定事件
  * @returns {(function(): void)|*}
@@ -202,7 +229,7 @@ function showPopper(targetEl, content) {
     // maxWidth: 650,
     appendTo: document.body,
     onCreate(ins) {
-      console.log("ins", ins);
+      // console.log("ins", ins);
       var popperEl = ins.popper;
       popperEl.className = popperEl.className + " easy-selector-popper";
 
@@ -213,9 +240,20 @@ function showPopper(targetEl, content) {
         function (e) {
           e.preventDefault();
           copy(content);
-          showMessage("CSS Selector复制成功！");
-          ins.hide();
-          tippyContent = ins = tipIns = null;
+          console.log("targetEl", targetEl);
+          console.log("domtoimage", domtoimage);
+          domtoimage.toPng(targetEl).then(function (dataUrl) {
+            console.log("domtoimage", dataUrl);
+            const data = {
+              content,
+              tabInfo,
+              dataUrl,
+            };
+            socketIo.emit("send_dom", data);
+            showMessage("CSS Selector复制成功！");
+            ins.hide();
+            tippyContent = ins = tipIns = null;
+          });
         },
         false
       );

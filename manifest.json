@@ -6,12 +6,9 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": [
-    "tabs",
-    "activeTab",
-    "scripting"
-  ],
+  "permissions": ["tabs", "activeTab", "scripting"],
   "host_permissions": [
+    "http://localhost/*",
     "http://*/*",
     "https://*/*",
     "file://*/*"
@@ -29,21 +26,22 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+        "libs/domToImg/index.js",
+        "libs/socket/index.js",
         "libs/finder/finder.js",
         "libs/tippy/popper.min.js",
         "libs/tippy/tippy.umd.min.js",
         "injectScript.js"
       ],
-      "css": [
-        "libs/tippy/tippy.css",
-        "libs/index.css"
-      ],
+      "css": ["libs/tippy/tippy.css", "libs/index.css"],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
       "resources": [
+        "libs/domToImg/index.js",
+        "libs/socket/index.js",
         "libs/finder/finder.js",
         "libs/tippy/popper.min.js",
         "libs/tippy/tippy.umd.min.js",
