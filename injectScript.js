@@ -211,6 +211,8 @@ function destroy() {
   isActive = false;
   activeEl = null;
   removeEventsFn = null;
+  socketIo.disconnect();
+  socketIo = null;
 }
 
 /**
