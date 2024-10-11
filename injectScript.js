@@ -1,8 +1,29 @@
 var isActive = false;
 var activeEl = null; // 当前选择的元素
+var maskEl;
 var removeEventsFn;
-var socketIo;
+var socket;
 var tabInfo;
+
+// 开始选择
+function handleClickEvent() {
+  console.log("触发了click事件");
+  if (!isActive) {
+    console.log("isActive为false");
+    isActive = true;
+    maskEl.style.display = "block";
+    maskEl.style.pointerEvents = "none";
+    document.getElementById("get_ele_selector_btn").classList.add("is-use");
+  } else {
+    console.log("isActive为true");
+    isActive = false;
+    maskEl.style.display = "none";
+    maskEl.style.pointerEvents = "auto";
+    maskEl.style.top = "-100%";
+    maskEl.style.left = "-100%";
+    document.getElementById("get_ele_selector_btn").classList.remove("is-use");
+  }
+}
 document.addEventListener("DOMContentLoaded", () => {
   try {
     init();
@@ -13,62 +34,96 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 function init(tab) {
-  console.log("init初始化+++", tab);
+  console.log("init初始化", tab);
   tabInfo = tab;
+  socketInit();
+
   // 防止重复初始化
   if (document.getElementById("easy_selector_toolbar")) {
     return;
   }
-  socketInit();
   injectHtml(); // 向页面注入html代码
   removeEventsFn = documentBindEvents(); // 给根元素绑定事件
 
-  var maskEl = document.getElementById("easy_selector_mask");
+  maskEl = document.getElementById("easy_selector_mask");
   // maskEl.style.border = "2px dashed green";
   // 给指示器按钮绑定点击事件
   document.getElementById("get_ele_selector_btn").addEventListener(
     "click",
-    function () {
-      console.log("触发了click事件");
-      if (!isActive) {
-        isActive = true;
-        maskEl.style.display = "block";
-        maskEl.style.pointerEvents = "none";
-        this.classList.add("is-use");
-      } else {
-        isActive = false;
-        maskEl.style.display = "none";
-        maskEl.style.pointerEvents = "auto";
-        maskEl.style.top = "-100%";
-        maskEl.style.left = "-100%";
-        this.classList.remove("is-use");
-      }
-    },
+    handleClickEvent,
     false
   );
 }
+
 // 初始化socketIo
 function socketInit() {
-  if (socketIo) {
-    return;
-  }
+    // 如果 socket 已经存在，则不重复初始化
+    if (socket) {
+      return Promise.resolve();
+    }
+  
+    // 使用 Promise 确保 socket.io 加载完成后再初始化
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = chrome.runtime.getURL("libs/socket/index.js");
+  
+      script.onload = () => {
+        console.log("socket.io-client 加载成功");
+  
+        try {
+          // 在脚本加载成功后初始化 socket
+          socket = io("http://localhost:3003");
+  
+          socket.on("connect", () => {
+            console.log("连接成功");
+          });
+          socket.on("connect-error", () => {
+            console.log("连接失败");
+          });
+          socket.on("chose", () => {
+            console.log("收到选元素消息");
+            handleClickEvent();
+          });
+  
+          resolve(); // 成功后 resolve
+        } catch (error) {
+          console.error("socket 初始化失败:", error);
+          reject(error); // 捕获错误并 reject
+        }
+      };
+  
+      script.onerror = () => {
+        console.error("socket.io-client 加载失败");
+        reject(new Error("socket.io-client 加载失败")); // 加载失败时 reject
+      };
+  
+      document.head.appendChild(script); // 将 script 标签添加到 head 中
+    });
 
-  const script = document.createElement("script");
-  script.src = chrome.runtime.getURL("libs/socket/index.js");
-  script.onload = () => {
-    console.log("socketIo.io-client 加载成功");
-    socketIo = io("http://localhost:3003");
-    socketIo.on("connect", () => {
-      console.log("连接成功");
-    });
-    socketIo.on("connect-error", () => {
-      console.log("连接失败");
-    });
-  };
-  script.onerror = () => {
-    console.error("socketIo.io-client 加载失败");
-  };
-  document.head.appendChild(script);
+  // if (socket) {
+  //   return;
+  // }
+
+  // const script = document.createElement("script");
+  // script.src = chrome.runtime.getURL("libs/socket/index.js");
+  // script.onload = () => {
+  //   console.log("socket.io-client 加载成功");
+  //   socket = io("http://localhost:3003");
+  //   socket.on("connect", () => {
+  //     console.log("连接成功");
+  //   });
+  //   socket.on("connect-error", () => {
+  //     console.log("连接失败");
+  //   });
+  //   socket.on("chose", () => {
+  //     console.log("收到选元素消息");
+  //     handleClickEvent();
+  //   });
+  // };
+  // script.onerror = () => {
+  //   console.error("socket.io-client 加载失败");
+  // };
+  // document.head.appendChild(script);
 }
 /**
  * 给document绑定事件
@@ -147,10 +202,9 @@ function documentBindEvents() {
   };
   var mouseUpFn = function (e) {
     isMouseDown = false;
-    console.log("触发了mouseUp事件");
+    console.log("触发了mouseUpFn事件");
     if (new Date().getTime() - mouseDownTime > 300) {
       // 防止按钮点击事件不可用
-      console.log(123);
 
       if (elementContains(toolbarEl, e.target)) {
         var btns = [].slice.call(toolbarEl.querySelectorAll("button"));
@@ -201,6 +255,7 @@ function documentBindEvents() {
   };
 }
 
+// 销毁
 function destroy() {
   if (!removeEventsFn) {
     return;
@@ -211,8 +266,8 @@ function destroy() {
   isActive = false;
   activeEl = null;
   removeEventsFn = null;
-  socketIo.disconnect();
-  socketIo = null;
+  socket.disconnect();
+  socket = null;
 }
 
 /**
@@ -221,8 +276,9 @@ function destroy() {
  * @param content 内容
  */
 function showPopper(targetEl, content) {
+  console.log("content", content);
   let tipIns = tippy(targetEl, {
-    content: content,
+    content: "复制",
     trigger: "click",
     animation: "shift-away",
     arrow: true,
@@ -231,27 +287,22 @@ function showPopper(targetEl, content) {
     // maxWidth: 650,
     appendTo: document.body,
     onCreate(ins) {
-      // console.log("ins", ins);
       var popperEl = ins.popper;
       popperEl.className = popperEl.className + " easy-selector-popper";
-
       let tippyContent = popperEl.querySelector(".tippy-content");
       tippyContent.title = "双击可复制内容！";
       tippyContent.addEventListener(
-        "dblclick",
+        "click",
         function (e) {
-          e.preventDefault();
+          // e.preventDefault();
           copy(content);
-          console.log("targetEl", targetEl);
-          console.log("domtoimage", domtoimage);
           domtoimage.toPng(targetEl).then(function (dataUrl) {
-            console.log("domtoimage", dataUrl);
             const data = {
               content,
               tabInfo,
               dataUrl,
             };
-            socketIo.emit("send_dom", data);
+            socket.emit("send_dom", data);
             showMessage("CSS Selector复制成功！");
             ins.hide();
             tippyContent = ins = tipIns = null;

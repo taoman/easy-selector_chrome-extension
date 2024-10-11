@@ -52,7 +52,6 @@ function executeInTab(tabId, func, args = [], file = null) {
 // 激活页面时调用
 chrome.tabs.onActivated.addListener(function (activeInfo) {
   const newTabId = activeInfo.tabId;
-  console.log("页面激活", newTabId, lastActiveTabId);
 
   // 如果有上一个标签页，执行 destroy
   if (
@@ -68,32 +67,35 @@ chrome.tabs.onActivated.addListener(function (activeInfo) {
 
   // 获取当前标签页的 URL
   chrome.tabs.get(newTabId, (tab) => {
-    lastActiveTabUrl = tab.url; // 更新当前激活标签页的 URL
+    console.log("页面激活", tab);
 
-    // 如果当前标签页未初始化插件，则执行 init
-    executeInTab(newTabId, (tab) => init(tab), [activeInfo], "injectScript.js");
-    pluginStatusInTab[newTabId] = true; // 标记插件已初始化
+    if (tab.url !== lastActiveTabUrl) {
+      lastActiveTabUrl = tab.url; // 更新当前激活标签页的 URL
+      // 如果当前标签页未初始化插件，则执行 init
+      executeInTab(newTabId, (tab) => init(tab), [tab], "injectScript.js");
+      pluginStatusInTab[newTabId] = true; // 标记插件已初始化
+    }
   });
 });
 
 // 页面更新事件（例如页面刷新，输入框内容改变等）
 chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-  console.log("页面更新", tabId, changeInfo, tab);
+  console.log("页面更新", tab);
   if (
     changeInfo.status === "complete" &&
     tabId === lastActiveTabId // 确保是当前激活的标签页
   ) {
     // 检查 URL 是否发生变化
-    if (tab.url !== lastActiveTabUrl) {
-      executeInTab(tabId, (tab) => init(tab), [tab]);
-      pluginStatusInTab[tabId] = true; // 标记插件已初始化
-      lastActiveTabUrl = tab.url; // 更新当前激活标签页的 URL
-    }
+    // if (tab.url !== lastActiveTabUrl) {
+    executeInTab(tabId, (tab) => init(tab), [tab]);
+    pluginStatusInTab[tabId] = true; // 标记插件已初始化
+    lastActiveTabUrl = tab.url; // 更新当前激活标签页的 URL
+    // }
   }
 });
 // 监听新增页面
 chrome.tabs.onCreated.addListener(function (tab) {
-  console.log("新页面创建", tab.id);
+  console.log("新页面创建", tab);
   if (!pluginStatusInTab[tab.id]) {
     executeInTab(tab.id, (tab) => init(tab), [tab], "injectScript.js");
     pluginStatusInTab[tab.id] = true;
