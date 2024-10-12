@@ -48,57 +48,55 @@ function init(tab) {
   maskEl = document.getElementById("easy_selector_mask");
   // maskEl.style.border = "2px dashed green";
   // 给指示器按钮绑定点击事件
-  document.getElementById("get_ele_selector_btn").addEventListener(
-    "click",
-    handleClickEvent,
-    false
-  );
+  document
+    .getElementById("get_ele_selector_btn")
+    .addEventListener("click", handleClickEvent, false);
 }
 
 // 初始化socketIo
 function socketInit() {
-    // 如果 socket 已经存在，则不重复初始化
-    if (socket) {
-      return Promise.resolve();
-    }
-  
-    // 使用 Promise 确保 socket.io 加载完成后再初始化
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = chrome.runtime.getURL("libs/socket/index.js");
-  
-      script.onload = () => {
-        console.log("socket.io-client 加载成功");
-  
-        try {
-          // 在脚本加载成功后初始化 socket
-          socket = io("http://localhost:3003");
-  
-          socket.on("connect", () => {
-            console.log("连接成功");
-          });
-          socket.on("connect-error", () => {
-            console.log("连接失败");
-          });
-          socket.on("chose", () => {
-            console.log("收到选元素消息");
-            handleClickEvent();
-          });
-  
-          resolve(); // 成功后 resolve
-        } catch (error) {
-          console.error("socket 初始化失败:", error);
-          reject(error); // 捕获错误并 reject
-        }
-      };
-  
-      script.onerror = () => {
-        console.error("socket.io-client 加载失败");
-        reject(new Error("socket.io-client 加载失败")); // 加载失败时 reject
-      };
-  
-      document.head.appendChild(script); // 将 script 标签添加到 head 中
-    });
+  // 如果 socket 已经存在，则不重复初始化
+  if (socket) {
+    return Promise.resolve();
+  }
+
+  // 使用 Promise 确保 socket.io 加载完成后再初始化
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = chrome.runtime.getURL("libs/socket/index.js");
+
+    script.onload = () => {
+      console.log("socket.io-client 加载成功");
+
+      try {
+        // 在脚本加载成功后初始化 socket
+        socket = io("http://localhost:3003");
+
+        socket.on("connect", () => {
+          console.log("连接成功");
+        });
+        socket.on("connect-error", () => {
+          console.log("连接失败");
+        });
+        socket.on("chose", () => {
+          console.log("收到选元素消息");
+          handleClickEvent();
+        });
+
+        resolve(); // 成功后 resolve
+      } catch (error) {
+        console.error("socket 初始化失败:", error);
+        reject(error); // 捕获错误并 reject
+      }
+    };
+
+    script.onerror = () => {
+      console.error("socket.io-client 加载失败");
+      reject(new Error("socket.io-client 加载失败")); // 加载失败时 reject
+    };
+
+    document.head.appendChild(script); // 将 script 标签添加到 head 中
+  });
 
   // if (socket) {
   //   return;
@@ -166,7 +164,7 @@ function documentBindEvents() {
       optimizedMinLength: 15,
     });
     showPopper(activeEl, selector);
-
+    console.log("xpath", getElementWholeXPath(activeEl));
     var timer = setTimeout(function () {
       clearTimeout(timer);
       maskEl.style.display = "none";
@@ -405,5 +403,75 @@ function elementContains(parentEl, childEle) {
       }
     }
     return false;
+  }
+}
+
+// /html/body/div[1]/div/main/div/div[2]/div[1]/div[2]/div[4]/div/div[2]/div[1]/section[1]/div[2]/a/h2
+// /html/body/div/div/main/div/div[2]/div/div[2]/div[4]/div/div[2]/div/section/div[2]/a/h2
+function getElementWholeXPath(element) {
+  if (element.id) {
+    return `//*[@id="${element.id}"]`;
+  }
+
+  const getIndex = (el) => {
+    let index = 1;
+    let sibling = el.previousSibling;
+
+    while (sibling) {
+      // 只计数相同类型的元素节点
+      if (
+        sibling.nodeType === Node.ELEMENT_NODE &&
+        sibling.nodeName === el.nodeName
+      ) {
+        index++;
+      }
+      sibling = sibling.previousSibling;
+    }
+    return index;
+  };
+
+  const parts = [];
+  while (element && element.nodeType === Node.ELEMENT_NODE) {
+    const index = getIndex(element);
+    const tagName = element.nodeName.toLowerCase();
+    // 只有有多个相同兄弟节点时才添加索引
+    const pathIndex = index > 1 ? `[${index}]` : "";
+    parts.unshift(`${tagName}${pathIndex}`);
+    element = element.parentNode;
+  }
+
+  return parts.length ? `/${parts.join("/")}` : null;
+}
+
+
+
+function getXPath(element) {
+  if (element.id !== "") { // 如果元素具有 ID 属性
+    return '//*[@id="' + element.id + '"]'; // 返回格式为 '//*[@id="elementId"]' 的 XPath 路径
+  }
+  if (element === document.body) { // 如果当前元素是 document.body
+    return "/html/body"; // 返回 '/html/body' 的 XPath 路径
+  }
+ 
+  var index = 1;
+  const childNodes = element.parentNode ? element.parentNode.childNodes : []; // 获取当前元素的父节点的子节点列表
+  var siblings = childNodes;
+ 
+  for (var i = 0; i < siblings.length; i++) {
+    var sibling = siblings[i];
+    if (sibling === element) { // 遍历到当前元素
+      // 递归调用，获取父节点的 XPath 路径，然后拼接当前元素的标签名和索引
+      return (
+        getXPath(element.parentNode) +
+        "/" +
+        element.tagName.toLowerCase() +
+        "[" +
+        index +
+        "]"
+      );
+    }
+    if (sibling.nodeType === 1 && sibling.tagName === element.tagName) { // 遍历到具有相同标签名的元素
+      index++; // 增加索引值
+    }
   }
 }
