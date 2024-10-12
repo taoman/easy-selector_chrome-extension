@@ -71,6 +71,7 @@ function socketInit() {
       try {
         // 在脚本加载成功后初始化 socket
         socket = io("http://localhost:3003");
+        // socket = io("http://localhost:9108");
 
         socket.on("connect", () => {
           console.log("连接成功");
@@ -78,7 +79,7 @@ function socketInit() {
         socket.on("connect-error", () => {
           console.log("连接失败");
         });
-        socket.on("chose", () => {
+        socket.on("start_select", () => {
           console.log("收到选元素消息");
           handleClickEvent();
         });
@@ -113,7 +114,7 @@ function socketInit() {
   //   socket.on("connect-error", () => {
   //     console.log("连接失败");
   //   });
-  //   socket.on("chose", () => {
+  //   socket.on("start_select", () => {
   //     console.log("收到选元素消息");
   //     handleClickEvent();
   //   });
@@ -163,8 +164,18 @@ function documentBindEvents() {
       seedMinLength: 10,
       optimizedMinLength: 15,
     });
-    showPopper(activeEl, selector);
-    console.log("xpath", getElementWholeXPath(activeEl));
+    const xpath = getElementWholeXPath(activeEl);
+    console.log("信息", xpath, activeEl, selector);
+    // showPopper(activeEl, selector, xpath);
+    domtoimage.toPng(activeEl).then(function (dataUrl) {
+      const data = JSON.stringify({
+        "css-selector": selector,
+        xpath,
+        tabInfo,
+        dataUrl,
+      });
+      socket.emit("send_dom", data);
+    });
     var timer = setTimeout(function () {
       clearTimeout(timer);
       maskEl.style.display = "none";
@@ -190,7 +201,6 @@ function documentBindEvents() {
     ) {
       return;
     }
-    console.log(111, isActive, isMouseDown);
     var targetRect = target.getBoundingClientRect();
     activeEl = target;
     maskEl.style.width = targetRect.width + "px";
@@ -236,18 +246,22 @@ function documentBindEvents() {
     toolbarEl.style.left = mouseX - elLeftWithMouseX + "px";
     toolbarEl.style.top = mouseY - elTopWithMouseY + "px";
   };
-
+  var handleMouseDown = function (e) {
+    if (e.ctrlKey) {
+      mouseDownFn(e);
+    }
+  };
   // 给根元素绑定mousemove事件
   document.addEventListener("mousemove", mouseMoveFn, false);
   // 给根节点绑定mousedown事件
-  document.addEventListener("mousedown", mouseDownFn, false);
+  document.addEventListener("mousedown", handleMouseDown, false);
   // 给根节点绑定mouseup事件
   document.addEventListener("mouseup", mouseUpFn, false);
 
   // 移除事件
   return function () {
     document.removeEventListener("mousemove", mouseMoveFn, false);
-    document.removeEventListener("mousedown", mouseDownFn, false);
+    document.removeEventListener("mousedown", handleMouseDown, false);
     document.removeEventListener("mouseup", mouseUpFn, false);
     maskEl = toolbarEl = getEleSelectorBtn = null;
   };
@@ -273,10 +287,10 @@ function destroy() {
  * @param targetEl 目标元素
  * @param content 内容
  */
-function showPopper(targetEl, content) {
+function showPopper(targetEl, content, xpath) {
   console.log("content", content);
   let tipIns = tippy(targetEl, {
-    content: "复制",
+    content: "点击发送",
     trigger: "click",
     animation: "shift-away",
     arrow: true,
@@ -295,11 +309,12 @@ function showPopper(targetEl, content) {
           // e.preventDefault();
           copy(content);
           domtoimage.toPng(targetEl).then(function (dataUrl) {
-            const data = {
-              content,
+            const data = JSON.stringify({
+              "css-selector": content,
+              xpath,
               tabInfo,
               dataUrl,
-            };
+            });
             socket.emit("send_dom", data);
             showMessage("CSS Selector复制成功！");
             ins.hide();
@@ -443,23 +458,24 @@ function getElementWholeXPath(element) {
   return parts.length ? `/${parts.join("/")}` : null;
 }
 
-
-
 function getXPath(element) {
-  if (element.id !== "") { // 如果元素具有 ID 属性
+  if (element.id !== "") {
+    // 如果元素具有 ID 属性
     return '//*[@id="' + element.id + '"]'; // 返回格式为 '//*[@id="elementId"]' 的 XPath 路径
   }
-  if (element === document.body) { // 如果当前元素是 document.body
+  if (element === document.body) {
+    // 如果当前元素是 document.body
     return "/html/body"; // 返回 '/html/body' 的 XPath 路径
   }
- 
+
   var index = 1;
   const childNodes = element.parentNode ? element.parentNode.childNodes : []; // 获取当前元素的父节点的子节点列表
   var siblings = childNodes;
- 
+
   for (var i = 0; i < siblings.length; i++) {
     var sibling = siblings[i];
-    if (sibling === element) { // 遍历到当前元素
+    if (sibling === element) {
+      // 遍历到当前元素
       // 递归调用，获取父节点的 XPath 路径，然后拼接当前元素的标签名和索引
       return (
         getXPath(element.parentNode) +
@@ -470,7 +486,8 @@ function getXPath(element) {
         "]"
       );
     }
-    if (sibling.nodeType === 1 && sibling.tagName === element.tagName) { // 遍历到具有相同标签名的元素
+    if (sibling.nodeType === 1 && sibling.tagName === element.tagName) {
+      // 遍历到具有相同标签名的元素
       index++; // 增加索引值
     }
   }
